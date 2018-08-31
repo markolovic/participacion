@@ -8,7 +8,6 @@ feature "Custom Pages" do
         title_en: "Custom conditions",
         content_en: "New text for conditions page",
         print_content_flag: true,
-        locale: "en"
       )
 
       visit custom_page.url
@@ -25,7 +24,6 @@ feature "Custom Pages" do
         title_en: "Custom conditions",
         content_en: "New text for conditions page",
         print_content_flag: true,
-        locale: "en"
       )
 
       visit custom_page.url
@@ -45,7 +43,6 @@ feature "Custom Pages" do
           title_en: "Custom page",
           content_en: "Text for new custom page",
           print_content_flag: false,
-          locale: "en"
         )
 
         visit custom_page.url
@@ -61,7 +58,6 @@ feature "Custom Pages" do
           title_en: "Custom page",
           content_en: "Text for new custom page",
           print_content_flag: false,
-          locale: "en"
         )
 
         visit custom_page.url
@@ -79,27 +75,6 @@ feature "Custom Pages" do
           subtitle_en: "This is my new custom page",
           content_en: "Text for new custom page with a link to https://consul.dev",
           print_content_flag: true,
-          locale: "en"
-        )
-
-        visit custom_page.url
-
-        expect(page).to have_title("Custom page")
-        expect(page).to have_selector("h1", text: "Custom page")
-        expect(page).to have_selector("h2", text: "This is my new custom page")
-        expect(page).to have_content("Text for new custom page with a link to https://consul.dev")
-        expect(page).to have_link("https://consul.dev")
-        expect(page).to have_content("Print this info")
-      end
-
-      scenario "Don't show subtitle if its blank" do
-        custom_page = create(:site_customization_page, :published,
-          slug: "slug-without-subtitle",
-          title_en: "Custom page",
-          subtitle_en: "",
-          content_en: "Text for new custom page",
-          print_content_flag: false,
-          locale: "en"
         )
 
         visit custom_page.url
@@ -116,7 +91,6 @@ feature "Custom Pages" do
           slug: "another-slug", title_en: "Another custom page",
           subtitle_en: "Subtitle for custom page",
           more_info_flag: true,
-          locale: "en"
         )
 
         visit help_path
@@ -129,7 +103,6 @@ feature "Custom Pages" do
           slug: "another-slug", title: "Another custom page",
           subtitle_en: "Subtitle for custom page",
           more_info_flag: false,
-          locale: "en"
         )
 
         visit help_path
@@ -145,10 +118,10 @@ feature "Custom Pages" do
 
       scenario "Not listed in more information page due to different locale" do
         custom_page = create(:site_customization_page, :published,
-          slug: "another-slug", title_en: "Ce texte est en français",
+          slug: "another-slug",
+          title_fr: "Ce texte est en français",
           subtitle_en: "Subtitle for custom page",
           more_info_flag: false,
-          locale: "fr"
         )
 
         visit help_path
