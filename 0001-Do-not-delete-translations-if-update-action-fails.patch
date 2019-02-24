@@ -1,0 +1,146 @@
+From 5c2cd2fbe147077169b910018b53cae600f1e9f9 Mon Sep 17 00:00:00 2001
+From: Marko Lovic <mlovicbueno@gmail.com>
+Date: Thu, 30 Aug 2018 10:16:10 +0200
+Subject: [PATCH] Do not delete translations if update action fails
+
+The delete_translations callback now executes after the update action.
+In many cases, this allows us to remove resource-loading code from the
+`resource` methods, as we can now assume that the resource-loading
+before_action callbacks have already run and set the resource
+instance variable.
+
+Also renames callback method to be more descriptive
+---
+ app/controllers/admin/banners_controller.rb                       | 1 -
+ app/controllers/admin/budget_investment_milestones_controller.rb  | 8 ++------
+ app/controllers/admin/legislation/draft_versions_controller.rb    | 4 ++--
+ app/controllers/admin/legislation/processes_controller.rb         | 2 +-
+ app/controllers/admin/legislation/questions_controller.rb         | 2 +-
+ .../admin/site_customization/information_texts_controller.rb      | 7 ++++++-
+ app/controllers/concerns/translatable.rb                          | 8 ++++++--
+ 7 files changed, 18 insertions(+), 14 deletions(-)
+
+diff --git a/app/controllers/admin/banners_controller.rb b/app/controllers/admin/banners_controller.rb
+index b17c17d..fde759b 100644
+--- a/app/controllers/admin/banners_controller.rb
++++ b/app/controllers/admin/banners_controller.rb
+@@ -63,7 +63,6 @@ class Admin::BannersController < Admin::BaseController
+     end
+ 
+     def resource
+-      @banner = Banner.find(params[:id]) unless @banner
+       @banner
+     end
+ end
+diff --git a/app/controllers/admin/budget_investment_milestones_controller.rb b/app/controllers/admin/budget_investment_milestones_controller.rb
+index e9b98fe..bea43c1 100644
+--- a/app/controllers/admin/budget_investment_milestones_controller.rb
++++ b/app/controllers/admin/budget_investment_milestones_controller.rb
+@@ -59,11 +59,7 @@ class Admin::BudgetInvestmentMilestonesController < Admin::BaseController
+   end
+ 
+   def load_budget_investment_milestone
+-    @milestone = get_milestone
+-  end
+-
+-  def get_milestone
+-    Budget::Investment::Milestone.find(params[:id])
++    @milestone = Budget::Investment::Milestone.find(params[:id])
+   end
+ 
+   def load_statuses
+@@ -71,7 +67,7 @@ class Admin::BudgetInvestmentMilestonesController < Admin::BaseController
+   end
+ 
+   def resource
+-    get_milestone
++    @milestone
+   end
+ 
+   def load_statuses
+diff --git a/app/controllers/admin/legislation/draft_versions_controller.rb b/app/controllers/admin/legislation/draft_versions_controller.rb
+index 703d8a5..39af3ef 100644
+--- a/app/controllers/admin/legislation/draft_versions_controller.rb
++++ b/app/controllers/admin/legislation/draft_versions_controller.rb
+@@ -1,8 +1,8 @@
+ class Admin::Legislation::DraftVersionsController < Admin::Legislation::BaseController
+   include Translatable
+ 
+-  load_and_authorize_resource :draft_version, class: "Legislation::DraftVersion", through: :process, prepend: true
+-  load_and_authorize_resource :process, class: "Legislation::Process", prepend: true
++  load_and_authorize_resource :process, class: "Legislation::Process"
++  load_and_authorize_resource :draft_version, class: "Legislation::DraftVersion", through: :process
+ 
+   def index
+     @draft_versions = @process.draft_versions
+diff --git a/app/controllers/admin/legislation/processes_controller.rb b/app/controllers/admin/legislation/processes_controller.rb
+index 2cb20d0..af88853 100644
+--- a/app/controllers/admin/legislation/processes_controller.rb
++++ b/app/controllers/admin/legislation/processes_controller.rb
+@@ -74,6 +74,6 @@ class Admin::Legislation::ProcessesController < Admin::Legislation::BaseControll
+     end
+ 
+     def resource
+-      @process || Legislation::Process.find(params[:id])
++      @process
+     end
+ end
+diff --git a/app/controllers/admin/legislation/questions_controller.rb b/app/controllers/admin/legislation/questions_controller.rb
+index da73e90..27d4471 100644
+--- a/app/controllers/admin/legislation/questions_controller.rb
++++ b/app/controllers/admin/legislation/questions_controller.rb
+@@ -55,6 +55,6 @@ class Admin::Legislation::QuestionsController < Admin::Legislation::BaseControll
+     end
+ 
+     def resource
+-      @question || ::Legislation::Question.find(params[:id])
++      @question
+     end
+ end
+diff --git a/app/controllers/admin/site_customization/information_texts_controller.rb b/app/controllers/admin/site_customization/information_texts_controller.rb
+index 32483d5..8626efe 100644
+--- a/app/controllers/admin/site_customization/information_texts_controller.rb
++++ b/app/controllers/admin/site_customization/information_texts_controller.rb
+@@ -41,7 +41,12 @@ class Admin::SiteCustomization::InformationTextsController < Admin::SiteCustomiz
+       params.require(:contents).values
+     end
+ 
+-    def delete_translations
++    def update_was_successful?
++      # There is no expected way for update action to be unsuccessful
++      true
++    end
++
++    def delete_unused_translations
+       languages_to_delete = params[:enabled_translations].select { |_, v| v == '0' }
+                                                          .keys
+       languages_to_delete.each do |locale|
+diff --git a/app/controllers/concerns/translatable.rb b/app/controllers/concerns/translatable.rb
+index aecf42f..d38ef92 100644
+--- a/app/controllers/concerns/translatable.rb
++++ b/app/controllers/concerns/translatable.rb
+@@ -2,7 +2,7 @@ module Translatable
+   extend ActiveSupport::Concern
+ 
+   included do
+-    before_action :delete_translations, only: [:update]
++    after_action :delete_unused_translations, only: [:update], if: :update_was_successful?
+   end
+ 
+   private
+@@ -13,7 +13,11 @@ module Translatable
+       end
+     end
+ 
+-    def delete_translations
++    def update_was_successful?
++      resource.valid?
++    end
++
++    def delete_unused_translations
+       locales = resource.translated_locales
+                         .select { |l| params.dig(:enabled_translations, l) == "0" }
+ 
+-- 
+2.7.4
+

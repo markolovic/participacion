@@ -1,0 +1,94 @@
+diff --cc app/controllers/admin/admin_notifications_controller.rb
+index b15272a,1dd0303..33e99f9
+--- a/app/controllers/admin/admin_notifications_controller.rb
++++ b/app/controllers/admin/admin_notifications_controller.rb
+@@@ -63,17 -62,6 +63,13 @@@ class Admin::AdminNotificationsControll
+    private
+  
+      def admin_notification_params
+ -      params.require(:admin_notification).permit(:title, :body, :link, :segment_recipient)
+ +      attributes = [:title, :body, :link, :segment_recipient,
+-                     *translation_params(params[:admin_notification])]
+++                    *translation_params(AdminNotification)]
+ +
+ +      params.require(:admin_notification).permit(attributes)
+ +    end
+ +
+ +    def resource
+ +      AdminNotification.find(params[:id])
+      end
+- 
+-     def resource_model
+-       AdminNotification
+-     end
+  end
+diff --cc app/models/admin_notification.rb
+index 14856bc,eccd909..049e2a8
+--- a/app/models/admin_notification.rb
++++ b/app/models/admin_notification.rb
+@@@ -1,10 -1,6 +1,10 @@@
+  class AdminNotification < ActiveRecord::Base
+    include Notifiable
+  
+ +  translates :title, touch: :true
+ +  translates :body,  touch: :true
+-   globalize_accessors locales: [:en, :es, :fr, :nl, :val, :pt_br]
+++  globalize_accessors locales: I18n.available_locales.map { |l| l.to_s.underscore.to_sym }
+ +
+    validates :title, presence: true
+    validates :body, presence: true
+    validates :segment_recipient, presence: true
+diff --cc app/views/admin/admin_notifications/_form.html.erb
+index b028b0a,a9d80ad..ba9a77a
+--- a/app/views/admin/admin_notifications/_form.html.erb
++++ b/app/views/admin/admin_notifications/_form.html.erb
+@@@ -1,41 -1,14 +1,19 @@@
+ -<%= form_for [:admin, @admin_notification] do |f| %>
+ +<%= render "admin/shared/globalize_locales", resource: @admin_notification  %>
+ +
+- <%= form_for [:admin, @admin_notification] do |f| %>
+++<%= translatable_form_for [:admin, @admin_notification] do |f| %>
+    <%= render 'shared/errors', resource: @admin_notification %>
+  
+-   <% @admin_notification.globalize_locales.each do |locale| %>
+-     <%= hidden_field_tag "delete_translations[#{locale}]", 0 %>
+-   <% end %>
+- 
+    <%= f.select :segment_recipient, options_for_select(user_segments_options,
+                                                        @admin_notification[:segment_recipient]) %>
+ -  <%= f.text_field :title %>
+ +
+-   <%= f.label :title %>
+-   <% @admin_notification.globalize_locales.each do |locale| %>
+-     <% globalize(locale) do %>
+-       <%= f.text_field "title_#{locale}",
+-                        class: "js-globalize-attribute",
+-                        data: {locale: locale},
+-                        style: display_translation?(locale),
+-                        label: false %>
+-     <% end %>
+-   <% end %>
+++  <%= f.translatable_text_field :title %>
+ +
+    <%= f.text_field :link %>
+ -  <%= f.label :body %>
+ -  <%= f.text_area :body, label: false %>
+ +
+-   <%= f.label :body %>
+-   <% @admin_notification.globalize_locales.each do |locale| %>
+-     <% globalize(locale) do %>
+-       <%= f.text_area "body_#{locale}",
+-                       class: "js-globalize-attribute",
+-                       data: {locale: locale},
+-                       style: display_translation?(locale),
+-                       label: false %>
+-     <% end %>
+-   <% end %>
+++  <%= f.translatable_text_area :body %>
+  
+    <div class="margin-top">
+ -    <%= f.submit t("admin.admin_notifications.new.submit"), class: "button success" %>
+ +    <%= f.submit t("admin.admin_notifications.#{admin_submit_action(@admin_notification)}.submit_button"),
+ +                 class: "button success" %>
+    </div>
+  <% end %>

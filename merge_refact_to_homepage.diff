@@ -1,0 +1,111 @@
+diff --git a/app/controllers/admin/widget/cards_controller.rb b/app/controllers/admin/widget/cards_controller.rb
+index 916b0ce..782e1d2 100644
+--- a/app/controllers/admin/widget/cards_controller.rb
++++ b/app/controllers/admin/widget/cards_controller.rb
+@@ -42,7 +42,7 @@ class Admin::Widget::CardsController < Admin::BaseController
+   def card_params
+     params.require(:widget_card).permit(:label, :title, :description, :link_text, :link_url,
+                                         :button_text, :button_url, :alignment, :header,
+-                                        *translation_params(params[:widget_card]),
++                                        *translation_params(Widget::Card),
+                                         image_attributes: [:id, :title, :attachment, :cached_attachment, :user_id, :_destroy])
+   end
+ 
+@@ -53,9 +53,4 @@ class Admin::Widget::CardsController < Admin::BaseController
+   def resource
+     Widget::Card.find(params[:id])
+   end
+-
+-  def resource_model
+-    Widget::Card
+-  end
+-
+ end
+diff --git a/app/models/widget/card.rb b/app/models/widget/card.rb
+index b41c6f7..e5a72a5 100644
+--- a/app/models/widget/card.rb
++++ b/app/models/widget/card.rb
+@@ -8,7 +8,7 @@ class Widget::Card < ActiveRecord::Base
+   translates :title,       touch: true
+   translates :description, touch: true
+   translates :link_text,   touch: true
+-  globalize_accessors locales: [:en, :es, :fr, :nl, :val, :pt_br]
++  globalize_accessors locales: I18n.available_locales.map { |l| l.to_s.underscore.to_sym }
+ 
+   def self.header
+     where(header: true)
+@@ -17,4 +17,4 @@ class Widget::Card < ActiveRecord::Base
+   def self.body
+     where(header: false).order(:created_at)
+   end
+-end
+\ No newline at end of file
++end
+diff --git a/app/views/admin/widget/cards/_form.html.erb b/app/views/admin/widget/cards/_form.html.erb
+index 5feb369..a823274 100644
+--- a/app/views/admin/widget/cards/_form.html.erb
++++ b/app/views/admin/widget/cards/_form.html.erb
+@@ -1,58 +1,18 @@
+ <%= render "admin/shared/globalize_locales", resource: @card %>
+ 
+-<%= form_for [:admin, @card] do |f| %>
+-
+-  <% @card.globalize_locales.each do |locale| %>
+-    <%= hidden_field_tag "delete_translations[#{locale}]", 0 %>
+-  <% end %>
++<%= translatable_form_for [:admin, @card] do |f| %>
+ 
+   <div class="small-12 medium-6">
+-    <%= f.label :label %>
+-    <% @card.globalize_locales.each do |locale| %>
+-      <% globalize(locale) do %>
+-        <%= f.text_field "label_#{locale}",
+-                         class: "js-globalize-attribute",
+-                         data: {locale: locale},
+-                         style: display_translation?(locale),
+-                         label: false %>
+-      <% end %>
+-    <% end %>
++    <%= f.translatable_text_field :label %>
+   </div>
+ 
+-  <%= f.label :title %>
+-  <% @card.globalize_locales.each do |locale| %>
+-    <% globalize(locale) do %>
+-      <%= f.text_field "title_#{locale}",
+-                       class: "js-globalize-attribute",
+-                       data: {locale: locale},
+-                       style: display_translation?(locale),
+-                       label: false %>
+-    <% end %>
+-  <% end %>
++  <%= f.translatable_text_field :title %>
+ 
+-  <%= f.label :description %>
+-  <% @card.globalize_locales.each do |locale| %>
+-    <% globalize(locale) do %>
+-      <%= f.text_field "description_#{locale}",
+-                       rows: 5,
+-                       class: "js-globalize-attribute",
+-                       data: {locale: locale},
+-                       style: display_translation?(locale),
+-                       label: false %>
+-    <% end %>
+-  <% end %>
++  <%= f.translatable_text_area :description, rows: 5 %>
+ 
+   <div class="small-12 medium-6">
++    <%= f.translatable_text_field :link_text %>
+     <%= f.label :link_text %>
+-    <% @card.globalize_locales.each do |locale| %>
+-      <% globalize(locale) do %>
+-        <%= f.text_field "link_text_#{locale}",
+-                         class: "js-globalize-attribute",
+-                         data: {locale: locale},
+-                         style: display_translation?(locale),
+-                         label: false %>
+-      <% end %>
+-    <% end %>
+   </div>
+ 
+   <div class="small-12 medium-6">

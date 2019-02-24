@@ -1,0 +1,110 @@
+Chrome session: consul-dev
+
+ - change base docker image
+   - which ruby v? 2.3.6 - 2.3.2 is only bugfixes
+ - pg version? don't hardcode, use latest? or just 9
+ - use env var to set db host, avoiding copying config/database.yml
+ - use --rm flag for db scripts
+ - install phantomjs
+ - add --rm todocker docs
+ - docker test instructions
+ - fix permission problems in public/system/
+
+
+ Bulk setting settings
+   https://stackoverflow.com/a/758956/4088940
+
+
+
+# M2C MACHINE
+
+RAILS_ENV=test rake db:setup
+
+"Advanced Search" specs always fail when file is run with seed 1, but not when block is run on its own.....  ./spec/features/budgets/investments_spec.rb
+In admin page, name changes from collab  legislation to participatory budgets. Not really
+
+issue
+ - what if many many headings? or really long names
+
+https://github.com/consul/consul/issues/2737
+
+
+
+NEW PR
+ - will conflict with open executions PR (write merge resolution myself?)
+ - how to handle polymorphic controller
+ - note: need to later drop unused tables
+ - rake task (SQL, keep old model, ... ?)
+
+ DESCs
+  - C1: 
+  Change BudgetInvestmentStatus to Milestone::Status
+
+  Generalize the BudgetInvestmentStatus model to Milestone::Status so it is not specific to budget investments, but can be used for any entity which has milestones. This is in preparation to make the Milestone model polymorphic and usable by entities other than budget investments.
+  - C2
+  Make Milestones general, and not specific to Budget Investments
+
+  Generalize the Budget::Investment::Milestone model to a polymorphic Milestone model so it can be used for entities other than Budget::Investment.
+
+
+
+References
+===================
+ - Implements #2763
+ - In anticipation of #2740 and #2743
+
+
+Objectives
+===================
+Make Milestones polymorphic, so they can be used by other models.
+
+Visual Changes
+===================
+The only visible change should be that budget investment statuses are renamed to "milestone status"
+
+Notes
+===================
+ - Theses changes will conflict with open PR #1543, but resolution should be easy
+ - The model changes require several DB schema changes. This PR includes migrations to create the new tables, and (still pending) a Rake task to migrate the data. The old tables will need to be dropped in a future release.
+
+# Still pending:
+
+Both commits (should) pass all tests, but this PR still needs:
+
+## "Polymorphize" controller
+Right now, the milestone controller is still specific to Budget Investments. It seems likeall entities which use milestones will use them in a similar way, so it probably makes sense to have a single controller handling all of them. This means that the controller (specifically the `new` action) will need to be able to identify the parent resource in order to create new milestones. I don't see an obvious, clean way to do this, so I'll list a few alternatives:
+ - Whenever linking to the "new milestone page", specify the milestoneable type `new_milestone_path(milestoneable_type: 'Budget::Investment')`
+ - Infer the resource from the <resource_id> param created by the Rails router (in controller: `milestoneable_type = case when params[:investment_id] then Budget::Investment ... `)
+ - When specifying the route, specify a default param value (`resource :investments { resource milestones, defaults: {milestoneable_type: 'Budget::Investment'} ...`)
+ - Subclass the controller for each type
+
+## Data Migration Rake task
+Is it okay to do this in raw SQL? (e.g. `INSERT INTO milestone_statuses (milestoneable_id, ...) SELECT (investment_id, ...) FROM budget_investment_milestones;`). Otherwise we would have to keep the old models and remove them later.
+
+
+
+          (SELECT status_id FROM #{Budget::Investment::Milestones.table_name}
+           WHERE investment_id = #{Budget::Investment.table_name}.id ORDER BY publication_date DESC LIMIT 1) = ?
+
+
+
+ - Maybe in Setting class add:
+
+class Setting
+  
+  if Rails.env.test?
+    after_save { @@changed = true }
+  end
+
+  # or send activenotif event ?
+
+
+  <%#<%= translation_nav(@budget) do |locale| %>%>
+    <%#<%= f.text_area "name_#{locale}",%>
+                    <%#class: "js-globalize-attribute",%>
+                    <%#data: { locale: locale },%>
+                    <%#style: display_translation?(locale),%>
+                    <%#label: false %>%>
+    <%#<% end >%>
+  <%#<% end >%>
+
